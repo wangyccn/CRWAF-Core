@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1001,
+    "name": "敏感信息泄露-测试规则",
+    "description": "检测响应中是否包含敏感信息",
+    "pattern": "(password|secret|key)='?[a-zA-Z0-9_]+'?",
+    "rule_type": "Regex",
+    "action": "Block",
+    "severity": "High",
+    "enabled": true,
+    "version": 1,
+    "tags": ["PII", "Custom"],
+    "target": ["ResponseBody"]
+  }
+]

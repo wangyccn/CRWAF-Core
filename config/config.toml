@@ -3,6 +3,7 @@
 [server]
 host = "0.0.0.0"
 port = 8080
+grpc_port = 50051
 
 [cache]
 max_size = 10000
@@ -28,3 +29,5 @@ rules_dir = "rules"
 # 如果不指定，则加载rules_dir目录下的所有.json文件
 # 自定义规则文件的优先级高于default.json
 rule_files = ["custom.json", "default.json"]
+# 自定义正则规则文件
+custom_regex_file = "custom_regex.json"

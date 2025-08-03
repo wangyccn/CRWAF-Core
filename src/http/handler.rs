@@ -6,7 +6,7 @@ use axum::response::{Html, IntoResponse, Json};
 use serde_json::json;
 
 use crate::core::error::AppError;
-use crate::http::middleware::error::{HttpError, error_response, not_found_error};
+use crate::http::middleware::error::{error_response, not_found_error, HttpError};
 
 use crate::core::config::AppConfig;
 
@@ -50,7 +50,7 @@ pub async fn internal_error_example() -> impl IntoResponse {
 pub async fn app_error_example() -> Result<(StatusCode, Json<serde_json::Value>), HttpError> {
     // 模拟AppError
     let app_error = AppError::Config("配置加载失败".to_string());
-    
+
     // 将AppError转换为HttpError
     Err(app_error.into())
 }
@@ -59,7 +59,7 @@ pub async fn app_error_example() -> Result<(StatusCode, Json<serde_json::Value>)
 pub async fn io_error_example() -> Result<impl IntoResponse, HttpError> {
     // 模拟IO错误
     let io_result = std::fs::read_to_string("不存在的文件.txt");
-    
+
     match io_result {
         Ok(content) => Ok((StatusCode::OK, content)),
         Err(io_error) => {

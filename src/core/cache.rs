@@ -6,8 +6,8 @@ use std::hash::Hash;
 use std::io::{self, Read, Write};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 use tokio::time;
 use tracing::{debug, error, info, warn};
@@ -21,60 +21,63 @@ pub struct CacheItem<V: 'static> {
 
 /// 可序列化的缓存项，用于文件缓存
 #[derive(Serialize, Deserialize)]
-pub struct SerializableCacheItem<V> 
-{
+pub struct SerializableCacheItem<V> {
     pub value: V,
     pub expires_at_secs: u64, // 从UNIX纪元开始的秒数
 }
 
-impl<V> SerializableCacheItem<V>
-{
+impl<V> SerializableCacheItem<V> {
     /// 从内存缓存项创建可序列化缓存项
-    pub fn from_cache_item(item: &CacheItem<V>, now: SystemTime) -> io::Result<Self> 
-    where 
+    pub fn from_cache_item(item: &CacheItem<V>, now: SystemTime) -> io::Result<Self>
+    where
         V: Clone + 'static,
     {
         // 计算过期时间（从现在开始的持续时间）
-        let expires_duration = item.expires_at.checked_duration_since(Instant::now())
+        let expires_duration = item
+            .expires_at
+            .checked_duration_since(Instant::now())
             .unwrap_or(Duration::from_secs(0));
-        
+
         // 计算过期时间点（UNIX时间戳）
-        let expires_at = now.checked_add(expires_duration)
-            .unwrap_or_else(|| now);
-        
+        let expires_at = now.checked_add(expires_duration).unwrap_or(now);
+
         // 转换为秒数
-        let expires_at_secs = expires_at.duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+        let expires_at_secs = expires_at
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(io::Error::other)?
             .as_secs();
-        
+
         Ok(Self {
             value: item.value.clone(),
             expires_at_secs,
         })
     }
-    
+
     /// 转换为内存缓存项
-    pub fn to_cache_item(&self, now: SystemTime) -> io::Result<CacheItem<V>> 
-    where 
+    pub fn to_cache_item(&self, now: SystemTime) -> io::Result<CacheItem<V>>
+    where
         V: Clone + 'static,
     {
         // 计算过期时间点（SystemTime）
-        let expires_at_system = SystemTime::UNIX_EPOCH.checked_add(Duration::from_secs(self.expires_at_secs))
+        let expires_at_system = SystemTime::UNIX_EPOCH
+            .checked_add(Duration::from_secs(self.expires_at_secs))
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "无效的过期时间"))?;
-        
+
         // 如果已经过期，返回错误
         if expires_at_system <= now {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "缓存项已过期"));
         }
-        
+
         // 计算从现在到过期时间的持续时间
-        let expires_duration = expires_at_system.duration_since(now)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
-        
+        let expires_duration = expires_at_system
+            .duration_since(now)
+            .map_err(io::Error::other)?;
+
         // 计算Instant类型的过期时间
-        let expires_at = Instant::now().checked_add(expires_duration)
+        let expires_at = Instant::now()
+            .checked_add(expires_duration)
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "无法计算过期时间"))?;
-        
+
         Ok(CacheItem {
             value: self.value.clone(),
             expires_at,
@@ -154,12 +157,12 @@ where
         for key in expired_keys {
             self.cache.remove(&key);
         }
-        
+
         if count > 0 {
             debug!("已清理 {} 个过期缓存项", count);
         }
     }
-    
+
     /// 启动定期清理任务
     #[allow(dead_code)]
     pub fn start_cleanup_task(self: &Arc<Self>, interval_seconds: u64) {
@@ -167,35 +170,35 @@ where
         if self.cleanup_running.load(Ordering::SeqCst) {
             return;
         }
-        
+
         // 标记为运行中
         self.cleanup_running.store(true, Ordering::SeqCst);
-        
+
         // 克隆Arc以在任务中使用
         let cache = self.clone();
         let running = self.cleanup_running.clone();
-        
+
         // 启动定期清理任务
         tokio::spawn(async move {
             let mut interval = time::interval(Duration::from_secs(interval_seconds));
-            
+
             debug!("缓存清理任务已启动，间隔: {}秒", interval_seconds);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // 检查是否应该停止任务
                 if !running.load(Ordering::SeqCst) {
                     debug!("缓存清理任务已停止");
                     break;
                 }
-                
+
                 // 执行清理
                 cache.cleanup();
             }
         });
     }
-    
+
     /// 停止定期清理任务
     #[allow(dead_code)]
     pub fn stop_cleanup_task(&self) {
@@ -285,13 +288,13 @@ where
             for key in expired_keys {
                 cache.pop(&key);
             }
-            
+
             if count > 0 {
                 debug!("LRU缓存已清理 {} 个过期项", count);
             }
         }
     }
-    
+
     /// 启动定期清理任务
     #[allow(dead_code)]
     pub fn start_cleanup_task(self: &Arc<Self>, interval_seconds: u64) {
@@ -299,35 +302,35 @@ where
         if self.cleanup_running.load(Ordering::SeqCst) {
             return;
         }
-        
+
         // 标记为运行中
         self.cleanup_running.store(true, Ordering::SeqCst);
-        
+
         // 克隆Arc以在任务中使用
         let cache = self.clone();
         let running = self.cleanup_running.clone();
-        
+
         // 启动定期清理任务
         tokio::spawn(async move {
             let mut interval = time::interval(Duration::from_secs(interval_seconds));
-            
+
             debug!("LRU缓存清理任务已启动，间隔: {}秒", interval_seconds);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // 检查是否应该停止任务
                 if !running.load(Ordering::SeqCst) {
                     debug!("LRU缓存清理任务已停止");
                     break;
                 }
-                
+
                 // 执行清理
                 cache.cleanup();
             }
         });
     }
-    
+
     /// 停止定期清理任务
     #[allow(dead_code)]
     pub fn stop_cleanup_task(&self) {
@@ -392,10 +395,10 @@ where
     pub fn new(config: FileCacheConfig) -> io::Result<Self> {
         // 确保缓存目录存在
         fs::create_dir_all(&config.cache_dir)?;
-        
+
         // 创建内存缓存
         let memory_cache = Arc::new(MemoryCache::new(config.ttl.as_secs()));
-        
+
         let cache = Self {
             memory_cache,
             config,
@@ -403,42 +406,44 @@ where
             modified: AtomicBool::new(false),
             save_task_running: Arc::new(AtomicBool::new(false)),
         };
-        
+
         // 尝试从文件加载缓存
         if let Err(e) = cache.load_from_file() {
             warn!("无法从文件加载缓存: {}", e);
         }
-        
+
         Ok(cache)
     }
-    
+
     /// 获取缓存文件路径
     fn get_cache_file_path(&self) -> PathBuf {
-        self.config.cache_dir.join(format!("{}.json", self.config.prefix))
+        self.config
+            .cache_dir
+            .join(format!("{}.json", self.config.prefix))
     }
-    
+
     /// 从文件加载缓存
     #[allow(dead_code)]
     pub fn load_from_file(&self) -> io::Result<()> {
         let file_path = self.get_cache_file_path();
-        
+
         // 如果文件不存在，直接返回
         if !file_path.exists() {
             return Ok(());
         }
-        
+
         // 读取文件内容
         let mut file = fs::File::open(&file_path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-        
+
         // 反序列化
         let cache_data: Vec<(K, SerializableCacheItem<V>)> = serde_json::from_str(&contents)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        
+
         // 当前时间
         let now = SystemTime::now();
-        
+
         // 加载到内存缓存
         let mut loaded_count = 0;
         for (key, serializable_item) in cache_data {
@@ -446,17 +451,21 @@ where
                 Ok(item) => {
                     self.memory_cache.cache.insert(key, item);
                     loaded_count += 1;
-                },
+                }
                 Err(e) => {
                     debug!("跳过已过期或无效的缓存项: {}", e);
                 }
             }
         }
-        
-        info!("从文件加载了 {} 个缓存项: {}", loaded_count, file_path.display());
+
+        info!(
+            "从文件加载了 {} 个缓存项: {}",
+            loaded_count,
+            file_path.display()
+        );
         Ok(())
     }
-    
+
     /// 保存缓存到文件
     #[allow(dead_code)]
     pub fn save_to_file(&self) -> io::Result<()> {
@@ -464,32 +473,32 @@ where
         if !self.modified.load(Ordering::SeqCst) {
             return Ok(());
         }
-        
+
         let file_path = self.get_cache_file_path();
         let now = SystemTime::now();
-        
+
         // 收集所有缓存项
         let mut cache_data = Vec::new();
         for item in self.memory_cache.cache.iter() {
             let key = item.key().clone();
             let cache_item = item.value();
-            
+
             // 跳过已过期的项
             if Instant::now() >= cache_item.expires_at {
                 continue;
             }
-            
+
             // 转换为可序列化格式
             match SerializableCacheItem::from_cache_item(cache_item, now) {
                 Ok(serializable_item) => {
                     cache_data.push((key, serializable_item));
-                },
+                }
                 Err(e) => {
                     warn!("无法序列化缓存项: {}", e);
                 }
             }
         }
-        
+
         // 如果设置了最大条目数，限制保存的数量
         if let Some(max_items) = self.config.max_items {
             if cache_data.len() > max_items {
@@ -498,51 +507,55 @@ where
                 cache_data.truncate(max_items);
             }
         }
-        
+
         // 序列化并写入文件
         let json = serde_json::to_string(&cache_data)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-        
+
         let mut file = fs::File::create(&file_path)?;
         file.write_all(json.as_bytes())?;
-        
+
         // 更新状态
         self.modified.store(false, Ordering::SeqCst);
         if let Ok(mut last_save) = self.last_save.lock() {
             *last_save = now;
         }
-        
-        info!("已保存 {} 个缓存项到文件: {}", cache_data.len(), file_path.display());
+
+        info!(
+            "已保存 {} 个缓存项到文件: {}",
+            cache_data.len(),
+            file_path.display()
+        );
         Ok(())
     }
-    
+
     /// 插入缓存项
     #[allow(dead_code)]
     pub fn insert(&self, key: K, value: V) {
         self.memory_cache.insert(key, value);
         self.modified.store(true, Ordering::SeqCst);
     }
-    
+
     /// 获取缓存项
     #[allow(dead_code)]
     pub fn get(&self, key: &K) -> Option<V> {
         self.memory_cache.get(key)
     }
-    
+
     /// 移除缓存项
     #[allow(dead_code)]
     pub fn remove(&self, key: &K) {
         self.memory_cache.remove(key);
         self.modified.store(true, Ordering::SeqCst);
     }
-    
+
     /// 清空缓存
     #[allow(dead_code)]
     pub fn clear(&self) {
         self.memory_cache.clear();
         self.modified.store(true, Ordering::SeqCst);
     }
-    
+
     /// 启动自动保存任务
     #[allow(dead_code)]
     pub fn start_auto_save_task(self: &Arc<Self>) {
@@ -550,34 +563,34 @@ where
         let Some(save_interval) = self.config.save_interval else {
             return;
         };
-        
+
         // 如果已经在运行，不重复启动
         if self.save_task_running.load(Ordering::SeqCst) {
             return;
         }
-        
+
         // 标记为运行中
         self.save_task_running.store(true, Ordering::SeqCst);
-        
+
         // 克隆Arc以在任务中使用
         let cache = self.clone();
         let running = self.save_task_running.clone();
-        
+
         // 启动定期保存任务
         tokio::spawn(async move {
             let mut interval = time::interval(Duration::from_secs(save_interval));
-            
+
             debug!("缓存自动保存任务已启动，间隔: {}秒", save_interval);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // 检查是否应该停止任务
                 if !running.load(Ordering::SeqCst) {
                     debug!("缓存自动保存任务已停止");
                     break;
                 }
-                
+
                 // 如果有修改，执行保存
                 if cache.modified.load(Ordering::SeqCst) {
                     if let Err(e) = cache.save_to_file() {
@@ -586,11 +599,11 @@ where
                 }
             }
         });
-        
+
         // 同时启动内存缓存的清理任务
         self.memory_cache.start_cleanup_task(save_interval);
     }
-    
+
     /// 停止自动保存任务
     #[allow(dead_code)]
     pub fn stop_auto_save_task(&self) {

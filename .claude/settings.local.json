@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo:*)",
+      "Bash(source:*)",
+      "Bash(rustc:*)",
+      "Bash(export PATH=\"$HOME/.cargo/bin:$PATH\")",
+      "Bash(rustup:*)",
+      "Bash(export:*)",
+      "Bash(find:*)",
+      "Bash(cat /etc/os-release)",
+      "Bash(sudo apt update)",
+      "Bash(sudo apt install -y pkg-config libssl-dev)",
+      "Bash(sudo apt install -y protobuf-compiler)",
+      "Bash(rm /mnt/d/用户/project/WAF/CRWAF/src/core/config_storage.rs)",
+      "Bash(mkdir -p src/core/grpc)",
+      "Bash(mv src/core/grpc_tests.rs src/core/grpc/tests.rs)",
+      "Bash(rm -rf src/core/grpc)",
+      "Bash(mkdir -p /mnt/d/用户/project/WAF/CRWAF/static/waf)",
+      "Bash(mkdir -p /mnt/d/用户/project/WAF/CRWAF/src/http)",
+      "Bash(mkdir -p /mnt/d/用户/project/WAF/CRWAF/resources)",
+      "Bash(timeout 30s cargo test core::cache::tests::test_memory_cache_basic -- --nocapture)"
+    ],
+    "deny": []
+  }
+}

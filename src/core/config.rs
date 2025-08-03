@@ -8,6 +8,7 @@ use tracing::{info, warn};
 pub struct ServerConfig {
     pub host: String,
     pub port: u16,
+    pub grpc_port: Option<u16>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -33,15 +34,16 @@ pub struct LogConfig {
     pub level: String,
     pub file_path: Option<String>,
     pub prefix: Option<String>,
-    pub rotation_policy: Option<String>,  // "size:10MB" 或 "time:24h" 或 "never"
-    pub compression: Option<bool>,        // 是否压缩
-    pub max_files: Option<usize>,         // 最大保留文件数
+    pub rotation_policy: Option<String>, // "size:10MB" 或 "time:24h" 或 "never"
+    pub compression: Option<bool>,       // 是否压缩
+    pub max_files: Option<usize>,        // 最大保留文件数
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RulesConfig {
     pub rules_dir: String,
     pub rule_files: Option<Vec<String>>,
+    pub custom_regex_file: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -58,6 +60,7 @@ impl Default for RulesConfig {
         Self {
             rules_dir: "rules".to_string(),
             rule_files: None,
+            custom_regex_file: Some("custom_regex.json".to_string()),
         }
     }
 }
@@ -68,6 +71,7 @@ impl Default for AppConfig {
             server: ServerConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8080,
+                grpc_port: Some(50051),
             },
             cache: CacheConfig {
                 max_size: 10000,
@@ -77,9 +81,9 @@ impl Default for AppConfig {
                     enabled: false,
                     cache_dir: "cache".to_string(),
                     prefix: "crwaf_cache".to_string(),
-                    ttl_seconds: 86400, // 默认24小时
+                    ttl_seconds: 86400,               // 默认24小时
                     save_interval_seconds: Some(300), // 默认5分钟
-                    max_items: Some(1000), // 默认最多1000项
+                    max_items: Some(1000),            // 默认最多1000项
                 }),
             },
             log: LogConfig {

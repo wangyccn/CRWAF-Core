@@ -18,6 +18,21 @@ service WafService {
   
   // 获取攻击日志
   rpc GetAttackLogs (AttackLogsRequest) returns (AttackLogsResponse);
+  
+  // 获取详细统计数据（新增功能）
+  rpc GetDetailedStats (DetailedStatsRequest) returns (DetailedStatsResponse);
+  
+  // 获取网站信息列表（从管理端）
+  rpc GetSiteList (SiteListRequest) returns (SiteListResponse);
+  
+  // 获取封禁IP列表（从管理端）
+  rpc GetBlockedIPs (BlockedIPsRequest) returns (BlockedIPsResponse);
+  
+  // 接收管理端操作指令
+  rpc ExecuteCommand (CommandRequest) returns (CommandResponse);
+  
+  // 同步配置（双向流）
+  rpc SyncConfig (stream ConfigSyncRequest) returns (stream ConfigSyncResponse);
 }
 
 // 状态请求
@@ -171,4 +186,117 @@ message AttackLog {
   RuleSeverity severity = 7;
   string matched_content = 8;
   uint64 timestamp = 9;
+}
+
+// 详细统计请求
+message DetailedStatsRequest {
+  string instance_id = 1;
+  uint64 start_time = 2;
+  uint64 end_time = 3;
+}
+
+// 详细统计响应
+message DetailedStatsResponse {
+  uint64 cache_hits = 1;
+  uint64 cache_misses = 2;
+  uint64 defense_hits = 3;
+  uint64 defense_misses = 4;
+  uint64 ip_blocks = 5;
+  uint64 total_requests = 6;
+  map<string, uint64> request_by_hour = 7;
+  map<string, uint64> blocked_ips = 8;
+  double cache_hit_rate = 9;
+  double defense_hit_rate = 10;
+  uint64 timestamp = 11;
+}
+
+// 网站列表请求
+message SiteListRequest {
+  string instance_id = 1;
+}
+
+// 网站列表响应
+message SiteListResponse {
+  repeated SiteInfo sites = 1;
+}
+
+// 网站信息
+message SiteInfo {
+  string site_id = 1;
+  string name = 2;
+  string domain = 3;
+  string origin = 4;
+  bool enabled = 5;
+  SecurityConfig security = 6;
+  uint64 created_at = 7;
+  uint64 updated_at = 8;
+}
+
+// 封禁IP请求
+message BlockedIPsRequest {
+  string instance_id = 1;
+}
+
+// 封禁IP响应
+message BlockedIPsResponse {
+  repeated BlockedIP blocked_ips = 1;
+}
+
+// 封禁IP信息
+message BlockedIP {
+  string ip = 1;
+  string reason = 2;
+  uint64 blocked_at = 3;
+  uint64 expires_at = 4;
+  bool permanent = 5;
+}
+
+// 命令请求
+message CommandRequest {
+  string instance_id = 1;
+  CommandType command_type = 2;
+  map<string, string> parameters = 3;
+}
+
+// 命令类型
+enum CommandType {
+  RELOAD_CONFIG = 0;
+  CLEAR_CACHE = 1;
+  BLOCK_IP = 2;
+  UNBLOCK_IP = 3;
+  UPDATE_RULES = 4;
+  RESTART_SERVICE = 5;
+}
+
+// 命令响应
+message CommandResponse {
+  bool success = 1;
+  string message = 2;
+  map<string, string> result_data = 3;
+}
+
+// 配置同步请求
+message ConfigSyncRequest {
+  string instance_id = 1;
+  ConfigSyncType sync_type = 2;
+  bytes config_data = 3;
+  uint64 version = 4;
+}
+
+// 配置同步类型
+enum ConfigSyncType {
+  PUSH_CONFIG = 0;
+  PULL_CONFIG = 1;
+  CONFIG_UPDATE = 2;
+  CONFIG_EXPORT = 3;
+  CONFIG_IMPORT = 4;
+}
+
+// 配置同步响应
+message ConfigSyncResponse {
+  bool success = 1;
+  string message = 2;
+  bytes config_data = 3;
+  uint64 version = 4;
+  map<string, string> metadata = 5;
 }

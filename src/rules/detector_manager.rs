@@ -30,14 +30,15 @@ impl DetectorManager {
     }
 
     /// 更新检测级别
+    #[allow(dead_code)]
     pub fn update_detection_level(&mut self, level: DetectionLevel) -> Result<(), String> {
         if let Some(detector) = &self.detector {
             match detector.lock() {
                 Ok(mut detector_guard) => {
                     detector_guard.set_level(level);
                     Ok(())
-                },
-                Err(_) => Err("获取检测器锁失败".to_string())
+                }
+                Err(_) => Err("获取检测器锁失败".to_string()),
             }
         } else {
             Err("检测器未初始化".to_string())

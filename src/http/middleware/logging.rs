@@ -39,7 +39,9 @@ where
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = std::pin::Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
+    type Future = std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>,
+    >;
 
     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
@@ -65,7 +67,10 @@ where
             .unwrap_or("unknown");
 
         // 记录请求日志
-        info!("请求开始: {} {} {:?} 来自 {}", method, uri, version, client_ip);
+        info!(
+            "请求开始: {} {} {:?} 来自 {}",
+            method, uri, version, client_ip
+        );
 
         // 处理请求并记录响应
         Box::pin(async move {

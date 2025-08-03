@@ -1,8 +1,11 @@
+pub mod detector;
+pub mod detector_manager;
 pub mod engine;
 pub mod model;
 pub mod parser;
-pub mod detector;
-pub mod detector_manager;
 
 #[cfg(test)]
-mod tests;
+pub mod rules_tests;
+
+#[cfg(test)]
+pub mod attack_detection_tests;

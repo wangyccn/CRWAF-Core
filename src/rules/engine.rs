@@ -12,6 +12,7 @@ use crate::rules::model::{Rule, RuleType};
 use crate::rules::parser::RuleParser;
 
 /// 规则引擎
+#[derive(Debug)]
 pub struct RuleEngine {
     /// 已编译的规则列表
     rules: Vec<Arc<CompiledRule>>,
@@ -33,12 +34,12 @@ pub struct CompiledRule {
 impl RuleEngine {
     /// 创建新的规则引擎
     pub fn new() -> Self {
-        Self { 
+        Self {
             rules: Vec::new(),
             config: None,
         }
     }
-    
+
     /// 设置规则配置
     pub fn with_config(mut self, config: RulesConfig) -> Self {
         self.config = Some(config);
@@ -70,41 +71,52 @@ impl RuleEngine {
         info!("成功编译 {} 条规则", self.rules.len());
         Ok(())
     }
-    
+
     /// 加载所有规则文件
     pub fn load_all_rules(&mut self) -> Result<()> {
         // 清空现有规则
         self.rules.clear();
-        
+
         if let Some(config) = &self.config {
             let rules_dir = Path::new(&config.rules_dir);
-            
+
             // 检查规则目录是否存在
             if !rules_dir.exists() || !rules_dir.is_dir() {
                 warn!("规则目录不存在: {:?}", rules_dir);
-                return Ok(());
-            }
-            
-            // 创建规则解析器，启用缓存
-            let parser = RuleParser::new(rules_dir, true);
-            
-            let rules = if let Some(rule_files) = &config.rule_files {
-                // 如果指定了规则文件列表，则按照列表顺序加载
-                parser.parse_rule_files(rule_files)?
             } else {
-                // 否则加载目录下所有.json文件
-                parser.parse_all_rules()?
-            };
-            
-            // 编译规则
-            for rule in rules {
-                match self.compile_rule(rule) {
-                    Ok(compiled_rule) => {
-                        self.rules.push(Arc::new(compiled_rule));
+                // 创建规则解析器，启用缓存
+                let parser = RuleParser::new(rules_dir, true);
+
+                let rules = if let Some(rule_files) = &config.rule_files {
+                    // 如果指定了规则文件列表，则按照列表顺序加载
+                    parser.parse_rule_files(rule_files)?
+                } else {
+                    // 否则加载目录下所有.json文件
+                    parser.parse_all_rules()?
+                };
+
+                // 编译规则
+                for rule in rules {
+                    match self.compile_rule(rule) {
+                        Ok(compiled_rule) => {
+                            self.rules.push(Arc::new(compiled_rule));
+                        }
+                        Err(e) => {
+                            error!("编译规则失败: {}", e);
+                        }
                     }
-                    Err(e) => {
-                        error!("编译规则失败: {}", e);
+                }
+            }
+
+            // 加载自定义正则表达式规则
+            if let Some(custom_regex_file) = &config.custom_regex_file {
+                let custom_regex_path = rules_dir.join(custom_regex_file);
+                if custom_regex_path.exists() {
+                    if let Err(e) = self.load_custom_regex_rules(&custom_regex_path) {
+                        error!("加载自定义正则规则失败: {}", e);
                     }
+                } else {
+                    warn!("自定义正则规则文件不存在: {:?}", custom_regex_path);
                 }
             }
         } else {
@@ -116,12 +128,42 @@ impl RuleEngine {
                 warn!("默认规则文件不存在: {:?}", default_path);
             }
         }
-        
+
         info!("总共加载了 {} 条规则", self.rules.len());
         Ok(())
     }
-    
 
+    /// 从文件加载自定义正则表达式规则
+    fn load_custom_regex_rules<P: AsRef<Path>>(&mut self, path: P) -> Result<()> {
+        let file = File::open(&path)
+            .context(format!("无法打开自定义正则规则文件: {:?}", path.as_ref()))?;
+        let reader = BufReader::new(file);
+
+        let rules: Vec<Rule> = serde_json::from_reader(reader)
+            .context(format!("无法解析自定义正则规则文件: {:?}", path.as_ref()))?;
+
+        info!(
+            "从 {:?} 加载了 {} 条自定义正则规则",
+            path.as_ref(),
+            rules.len()
+        );
+
+        // 编译规则
+        for mut rule in rules {
+            // 确保规则类型为Regex
+            rule.rule_type = RuleType::Regex;
+            match self.compile_rule(rule) {
+                Ok(compiled_rule) => {
+                    self.rules.push(Arc::new(compiled_rule));
+                }
+                Err(e) => {
+                    error!("编译自定义正则规则失败: {}", e);
+                }
+            }
+        }
+
+        Ok(())
+    }
 
     /// 编译单个规则
     fn compile_rule(&self, rule: Rule) -> Result<CompiledRule> {
