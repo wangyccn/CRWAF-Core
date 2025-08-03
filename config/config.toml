@@ -1,0 +1,30 @@
+# CRWAF 配置文件
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[cache]
+max_size = 10000
+ttl_seconds = 3600
+enabled = true
+
+[cache.file_cache]
+enabled = true
+cache_dir = "cache"
+prefix = "waf_cache"
+ttl_seconds = 3600
+save_interval_seconds = 300
+max_items = 10000
+
+[log]
+level = "info"
+file_path = "logs"
+
+[rules]
+# 规则文件目录
+rules_dir = "rules"
+# 规则文件列表，按优先级排序（从高到低）
+# 如果不指定，则加载rules_dir目录下的所有.json文件
+# 自定义规则文件的优先级高于default.json
+rule_files = ["custom.json", "default.json"]

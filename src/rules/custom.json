@@ -1,0 +1,15 @@
+[
+  {
+    "id": "CUSTOM-001",
+    "name": "自定义规则示例",
+    "description": "这是一个自定义规则示例",
+    "pattern": "malicious_pattern",
+    "rule_type": "Contains",
+    "target": "All",
+    "action": "Block",
+    "severity": "Medium",
+    "enabled": true,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z"
+  }
+]

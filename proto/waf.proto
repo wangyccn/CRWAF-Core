@@ -1,0 +1,174 @@
+syntax = "proto3";
+
+package waf;
+
+// WAF服务定义
+service WafService {
+  // 获取WAF状态
+  rpc GetStatus (StatusRequest) returns (StatusResponse);
+  
+  // 获取网站配置
+  rpc GetSiteConfig (SiteConfigRequest) returns (SiteConfigResponse);
+  
+  // 更新规则
+  rpc UpdateRules (UpdateRulesRequest) returns (UpdateRulesResponse);
+  
+  // 获取统计数据
+  rpc GetStats (StatsRequest) returns (StatsResponse);
+  
+  // 获取攻击日志
+  rpc GetAttackLogs (AttackLogsRequest) returns (AttackLogsResponse);
+}
+
+// 状态请求
+message StatusRequest {
+  string instance_id = 1;
+}
+
+// 状态响应
+message StatusResponse {
+  bool running = 1;
+  string version = 2;
+  SystemInfo system_info = 3;
+}
+
+// 系统信息
+message SystemInfo {
+  double cpu_usage = 1;
+  double memory_usage = 2;
+  uint64 uptime_seconds = 3;
+  uint64 total_requests = 4;
+  uint64 blocked_requests = 5;
+}
+
+// 网站配置请求
+message SiteConfigRequest {
+  string site_id = 1;
+}
+
+// 网站配置响应
+message SiteConfigResponse {
+  repeated SiteConfig sites = 1;
+}
+
+// 网站配置
+message SiteConfig {
+  string site_id = 1;
+  string domain = 2;
+  string origin = 3;
+  bool enabled = 4;
+  SecurityConfig security = 5;
+}
+
+// 安全配置
+message SecurityConfig {
+  bool xss_protection = 1;
+  bool sql_injection_protection = 2;
+  bool five_second_shield = 3;
+  bool click_shield = 4;
+  bool captcha = 5;
+}
+
+// 更新规则请求
+message UpdateRulesRequest {
+  repeated Rule rules = 1;
+}
+
+// 规则定义
+message Rule {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string pattern = 4;
+  RuleType rule_type = 5;
+  RuleTarget target = 6;
+  RuleAction action = 7;
+  RuleSeverity severity = 8;
+  bool enabled = 9;
+}
+
+// 规则类型
+enum RuleType {
+  REGEX = 0;
+  EXACT = 1;
+  CONTAINS = 2;
+  STARTS_WITH = 3;
+  ENDS_WITH = 4;
+}
+
+// 规则目标
+enum RuleTarget {
+  URI = 0;
+  HEADER = 1;
+  BODY = 2;
+  QUERY = 3;
+  COOKIE = 4;
+  ALL = 5;
+}
+
+// 规则动作
+enum RuleAction {
+  BLOCK = 0;
+  LOG = 1;
+  REDIRECT = 2;
+  CAPTCHA = 3;
+}
+
+// 规则严重性
+enum RuleSeverity {
+  LOW = 0;
+  MEDIUM = 1;
+  HIGH = 2;
+  CRITICAL = 3;
+}
+
+// 更新规则响应
+message UpdateRulesResponse {
+  bool success = 1;
+  string message = 2;
+  uint32 updated_count = 3;
+}
+
+// 统计请求
+message StatsRequest {
+  string site_id = 1;
+  uint64 start_time = 2;
+  uint64 end_time = 3;
+}
+
+// 统计响应
+message StatsResponse {
+  uint64 total_requests = 1;
+  uint64 blocked_requests = 2;
+  uint64 allowed_requests = 3;
+  map<string, uint64> attacks_by_type = 4;
+  map<string, uint64> requests_by_country = 5;
+}
+
+// 攻击日志请求
+message AttackLogsRequest {
+  string site_id = 1;
+  uint64 start_time = 2;
+  uint64 end_time = 3;
+  uint32 limit = 4;
+  uint32 offset = 5;
+}
+
+// 攻击日志响应
+message AttackLogsResponse {
+  repeated AttackLog logs = 1;
+  uint32 total = 2;
+}
+
+// 攻击日志
+message AttackLog {
+  string id = 1;
+  string site_id = 2;
+  string client_ip = 3;
+  string request_uri = 4;
+  string rule_id = 5;
+  string rule_name = 6;
+  RuleSeverity severity = 7;
+  string matched_content = 8;
+  uint64 timestamp = 9;
+}
