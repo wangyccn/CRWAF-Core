@@ -550,6 +550,7 @@ dependencies = [
  "imageproc",
  "ipnet",
  "lru",
+ "once_cell",
  "prost",
  "prost-build",
  "rand 0.8.5",

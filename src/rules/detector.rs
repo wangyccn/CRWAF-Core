@@ -4,9 +4,35 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use regex::Regex;
+use dashmap::DashMap;
+use once_cell::sync::Lazy;
 
 use crate::rules::engine::{CompiledRule, RuleEngine};
 use crate::rules::model::{Rule, RuleAction, RuleSeverity, RuleTarget, RuleType};
+
+/// 全局正则表达式缓存，用于避免重复编译正则
+#[derive(Debug, Default)]
+struct RegexCache {
+    cache: DashMap<String, Regex>,
+}
+
+impl RegexCache {
+    fn new() -> Self {
+        Self { cache: DashMap::new() }
+    }
+
+    fn get(&self, pattern: &str) -> Result<Regex> {
+        if let Some(regex) = self.cache.get(pattern) {
+            Ok(regex.clone())
+        } else {
+            let compiled = Regex::new(pattern)?;
+            self.cache.insert(pattern.to_string(), compiled.clone());
+            Ok(compiled)
+        }
+    }
+}
+
+static REGEX_CACHE: Lazy<RegexCache> = Lazy::new(RegexCache::new);
 
 /// 攻击检测级别
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -112,87 +138,87 @@ impl AttackDetector {
         // 低级别XSS检测 - 检测基本的XSS攻击
         self.xss_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r"(?i)<script[^>]*>[\s\S]*?<\/script>")?,
+            REGEX_CACHE.get(r"(?i)<script[^>]*>[\s\S]*?<\/script>")?,
         ));
         self.xss_regexes
-            .push((DetectionLevel::Low, Regex::new(r"(?i)<img[^>]*\bonerror=")?));
+            .push((DetectionLevel::Low, REGEX_CACHE.get(r"(?i)<img[^>]*\bonerror=")?));
         self.xss_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r#"(?i)<iframe[^>]*src=["']javascript:"#)?,
+            REGEX_CACHE.get(r#"(?i)<iframe[^>]*src=["']javascript:"#)?,
         ));
 
         // 中级别XSS检测 - 检测更多的XSS攻击向量
         self.xss_regexes
-            .push((DetectionLevel::Medium, Regex::new(r"(?i)<[^>]*\b(on\w+)=")?));
+            .push((DetectionLevel::Medium, REGEX_CACHE.get(r"(?i)<[^>]*\b(on\w+)=")?));
         self.xss_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r"(?i)(javascript|vbscript|expression):")?,
+            REGEX_CACHE.get(r"(?i)(javascript|vbscript|expression):")?,
         ));
         self.xss_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r#"(?i)<object[^>]*data=["']javascript:"#)?,
+            REGEX_CACHE.get(r#"(?i)<object[^>]*data=["']javascript:"#)?,
         ));
         self.xss_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r#"(?i)<embed[^>]*src=["']javascript:"#)?,
+            REGEX_CACHE.get(r#"(?i)<embed[^>]*src=["']javascript:"#)?,
         ));
         self.xss_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r#"(?i)<meta[^>]*http-equiv=["']refresh[^>]*url=["']javascript:"#)?,
+            REGEX_CACHE.get(r#"(?i)<meta[^>]*http-equiv=["']refresh[^>]*url=["']javascript:"#)?,
         ));
 
         // 高级别XSS检测 - 检测XSS绕过技术和高级攻击向量
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\\x[0-9a-f]{2}|&#x?[0-9a-f]+;?")?,
+            REGEX_CACHE.get(r"(?i)\\x[0-9a-f]{2}|&#x?[0-9a-f]+;?")?,
         ));
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(
+            REGEX_CACHE.get(
                 r"(?i)document\.cookie|document\.location|document\.write|window\.location",
             )?,
         ));
         // HTML实体编码绕过检测
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)&(#[0-9]+|#x[0-9a-f]+|[a-z]+);?")?,
+            REGEX_CACHE.get(r"(?i)&(#[0-9]+|#x[0-9a-f]+|[a-z]+);?")?,
         ));
         // CSS表达式注入
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)expression\s*\(|behavior\s*:|@import|mocha:|livescript:")?,
+            REGEX_CACHE.get(r"(?i)expression\s*\(|behavior\s*:|@import|mocha:|livescript:")?,
         ));
         // SVG XSS攻击
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)<svg[^>]*><script|<svg[^>]*onload=")?,
+            REGEX_CACHE.get(r"(?i)<svg[^>]*><script|<svg[^>]*onload=")?,
         ));
         // 数据协议绕过
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)data:[\w\/]+;base64|data:text\/html")?,
+            REGEX_CACHE.get(r"(?i)data:[\w\/]+;base64|data:text\/html")?,
         ));
         // 标签属性绕过
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(
+            REGEX_CACHE.get(
                 r#"(?i)<\w+[^>]*\s+(style|background|src|href|action|formaction)=["']*javascript:"#,
             )?,
         ));
         // 使用各种空白字符绕过
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)<[\s\x00-\x20]*script|javascript[\s\x00-\x20]*:")?,
+            REGEX_CACHE.get(r"(?i)<[\s\x00-\x20]*script|javascript[\s\x00-\x20]*:")?,
         ));
         // 双重编码绕过
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)%25[0-9a-f]{2}|%2[5-6][0-9a-f]")?,
+            REGEX_CACHE.get(r"(?i)%25[0-9a-f]{2}|%2[5-6][0-9a-f]")?,
         ));
         // 使用注释绕过
         self.xss_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)<script[^>]*>[\s\S]*?<!--[\s\S]*?-->[\s\S]*?<\/script>")?,
+            REGEX_CACHE.get(r"(?i)<script[^>]*>[\s\S]*?<!--[\s\S]*?-->[\s\S]*?<\/script>")?,
         ));
 
         Ok(())
@@ -203,31 +229,31 @@ impl AttackDetector {
         // 低级别SQL注入检测 - 检测基本的SQL注入攻击
         self.sql_injection_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r"(?i)'\s*or\s*'\d*'\s*=\s*'\d*")?,
+            REGEX_CACHE.get(r"(?i)'\s*or\s*'\d*'\s*=\s*'\d*")?,
         ));
         self.sql_injection_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r"(?i)\bunion\s+all\s+select\b")?,
+            REGEX_CACHE.get(r"(?i)\bunion\s+all\s+select\b")?,
         ));
 
         // 中级别SQL注入检测 - 检测更多的SQL注入攻击向量
         self.sql_injection_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r"(?i)\b(select|insert|update|delete|drop|alter|create)\b.*?\bfrom\b")?,
+            REGEX_CACHE.get(r"(?i)\b(select|insert|update|delete|drop|alter|create)\b.*?\bfrom\b")?,
         ));
         self.sql_injection_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r"(?i);\s*(select|insert|update|delete|drop|alter|create)\b")?,
+            REGEX_CACHE.get(r"(?i);\s*(select|insert|update|delete|drop|alter|create)\b")?,
         ));
 
         // 高级别SQL注入检测 - 检测SQL注入绕过技术和时间盲注
         self.sql_injection_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\bsleep\s*\(\s*\d+\s*\)|benchmark\s*\(")?,
+            REGEX_CACHE.get(r"(?i)\bsleep\s*\(\s*\d+\s*\)|benchmark\s*\(")?,
         ));
         self.sql_injection_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\bwaitfor\s+delay\s+'")?,
+            REGEX_CACHE.get(r"(?i)\bwaitfor\s+delay\s+'")?,
         ));
 
         Ok(())
@@ -239,31 +265,31 @@ impl AttackDetector {
         // 只检测明确的协议指示符和内部服务名称，避免误报
         self.ssrf_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r"(?i)\b(file|gopher|dict)://")?,
+            REGEX_CACHE.get(r"(?i)\b(file|gopher|dict)://")?,
         ));
         self.ssrf_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r"(?i)\binternal-service\b")?,
+            REGEX_CACHE.get(r"(?i)\binternal-service\b")?,
         ));
 
         // 中级别SSRF检测 - 检测IP地址和本地主机
         // 注意：移除了不支持的前瞻和后顾断言，添加对带端口的IP地址的支持
         self.ssrf_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r"(?i)\b(127\.0\.0\.1|localhost|0\.0\.0\.0|::1)(:[0-9]{1,5})?\b")?,
+            REGEX_CACHE.get(r"(?i)\b(127\.0\.0\.1|localhost|0\.0\.0\.0|::1)(:[0-9]{1,5})?\b")?,
         ));
-        self.ssrf_regexes.push((DetectionLevel::Medium, Regex::new(r"(?i)\b(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.[0-9]{1,3}\.[0-9]{1,3}(:[0-9]{1,5})?\b")?));
+        self.ssrf_regexes.push((DetectionLevel::Medium, REGEX_CACHE.get(r"(?i)\b(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.[0-9]{1,3}\.[0-9]{1,3}(:[0-9]{1,5})?\b")?));
 
         // 高级别SSRF检测 - 检测SSRF绕过技术
         // 注意：移除了不支持的前瞻和后顾断言，添加对带端口的IP地址的支持
         self.ssrf_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\b([0-9]+\.){3}[0-9]+(:[0-9]{1,5})?\b")?,
+            REGEX_CACHE.get(r"(?i)\b([0-9]+\.){3}[0-9]+(:[0-9]{1,5})?\b")?,
         ));
         // 十六进制IP和纯数字IP
         self.ssrf_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\b0x[0-9a-f]{8}\b|\b\d{8,10}\b")?,
+            REGEX_CACHE.get(r"(?i)\b0x[0-9a-f]{8}\b|\b\d{8,10}\b")?,
         ));
 
         Ok(())
@@ -274,27 +300,27 @@ impl AttackDetector {
         // 低级别WebShell检测 - 检测基本的WebShell特征
         self.webshell_regexes.push((
             DetectionLevel::Low,
-            Regex::new(r"(?i)\b(eval|system|exec|shell_exec|passthru|popen)\s*\(")?,
+            REGEX_CACHE.get(r"(?i)\b(eval|system|exec|shell_exec|passthru|popen)\s*\(")?,
         ));
 
         // 中级别WebShell检测 - 检测更多的WebShell特征
         self.webshell_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r"(?i)\$_(GET|POST|REQUEST|COOKIE|SERVER)\s*\[")?,
+            REGEX_CACHE.get(r"(?i)\$_(GET|POST|REQUEST|COOKIE|SERVER)\s*\[")?,
         ));
         self.webshell_regexes.push((
             DetectionLevel::Medium,
-            Regex::new(r"(?i)\b(base64_decode|str_rot13|gzinflate|gzuncompress)\s*\(")?,
+            REGEX_CACHE.get(r"(?i)\b(base64_decode|str_rot13|gzinflate|gzuncompress)\s*\(")?,
         ));
 
         // 高级别WebShell检测 - 检测WebShell绕过技术
         self.webshell_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\b(preg_replace|create_function)\s*\(.*?/e")?,
+            REGEX_CACHE.get(r"(?i)\b(preg_replace|create_function)\s*\(.*?/e")?,
         ));
         self.webshell_regexes.push((
             DetectionLevel::High,
-            Regex::new(r"(?i)\b(assert|call_user_func|call_user_func_array)\s*\(")?,
+            REGEX_CACHE.get(r"(?i)\b(assert|call_user_func|call_user_func_array)\s*\(")?,
         ));
 
         Ok(())
@@ -409,7 +435,9 @@ impl AttackDetector {
             .replace("&amp;", "&");
 
         // 十六进制解码
-        let hex_regex = regex::Regex::new(r"\\x([0-9a-fA-F]{2})").unwrap();
+        let hex_regex = REGEX_CACHE
+            .get(r"\\x([0-9a-fA-F]{2})")
+            .unwrap();
         decoded = hex_regex
             .replace_all(&decoded, |caps: &regex::Captures| {
                 if let Ok(byte_val) = u8::from_str_radix(&caps[1], 16) {
@@ -421,7 +449,9 @@ impl AttackDetector {
             .to_string();
 
         // Unicode解码
-        let unicode_regex = regex::Regex::new(r"\\u([0-9a-fA-F]{4})").unwrap();
+        let unicode_regex = REGEX_CACHE
+            .get(r"\\u([0-9a-fA-F]{4})")
+            .unwrap();
         decoded = unicode_regex
             .replace_all(&decoded, |caps: &regex::Captures| {
                 if let Ok(code_point) = u32::from_str_radix(&caps[1], 16) {
