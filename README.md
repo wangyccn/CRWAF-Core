@@ -1,5 +1,6 @@
 # CRWAF - 云锁Web应用防火墙
-
+*** Note: This project is not finished yet!!! Please do not download or use it!
+*** 
 ## 项目简介
 
 CRWAF是一个高性能的Web应用防火墙，使用Rust语言开发，旨在提供强大的Web安全防护能力。
