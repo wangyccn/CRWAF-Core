@@ -220,15 +220,14 @@ impl WafRequestForwarder {
         let mut backend_request = self
             .client
             .request(self.convert_method(method), &backend_url)
-            .body(body.to_vec());
+            .body(body);
 
         // 复制原始请求头，但排除一些不应转发的头
         for (name, value) in headers.iter() {
-            let name_str = name.as_str().to_lowercase();
-            if !self.should_skip_header(&name_str) {
+            if !self.should_skip_header(name.as_str()) {
                 if let (Ok(header_name), Ok(header_value)) = (
                     name.as_str().parse::<reqwest::header::HeaderName>(),
-                    value.to_str(),
+                    reqwest::header::HeaderValue::from_bytes(value.as_bytes()),
                 ) {
                     backend_request = backend_request.header(header_name, header_value);
                 }
@@ -289,17 +288,20 @@ impl WafRequestForwarder {
 
     /// 检查是否应该跳过转发某个请求头
     fn should_skip_header(&self, header_name: &str) -> bool {
-        matches!(
-            header_name,
-            "host"
-                | "connection"
-                | "upgrade"
-                | "proxy-connection"
-                | "proxy-authorization"
-                | "te"
-                | "trailers"
-                | "transfer-encoding"
-        )
+        const SKIP_HEADERS: &[&str] = &[
+            "host",
+            "connection",
+            "upgrade",
+            "proxy-connection",
+            "proxy-authorization",
+            "te",
+            "trailers",
+            "transfer-encoding",
+        ];
+
+        SKIP_HEADERS
+            .iter()
+            .any(|h| header_name.eq_ignore_ascii_case(h))
     }
 
     /// 构建WAF响应
@@ -323,8 +325,7 @@ impl WafRequestForwarder {
 
         // 复制响应头，但跳过一些不应转发的头
         for (name, value) in headers.iter() {
-            let name_str = name.as_str().to_lowercase();
-            if !self.should_skip_response_header(&name_str) {
+            if !self.should_skip_response_header(name.as_str()) {
                 if let (Ok(axum_name), Ok(axum_value)) = (
                     HeaderName::from_bytes(name.as_str().as_bytes()),
                     HeaderValue::from_bytes(value.as_bytes()),
@@ -346,10 +347,18 @@ impl WafRequestForwarder {
 
     /// 检查是否应该跳过转发某个响应头
     fn should_skip_response_header(&self, header_name: &str) -> bool {
-        matches!(
-            header_name,
-            "connection" | "upgrade" | "proxy-connection" | "te" | "trailers" | "transfer-encoding"
-        )
+        const SKIP_RESPONSE_HEADERS: &[&str] = &[
+            "connection",
+            "upgrade",
+            "proxy-connection",
+            "te",
+            "trailers",
+            "transfer-encoding",
+        ];
+
+        SKIP_RESPONSE_HEADERS
+            .iter()
+            .any(|h| header_name.eq_ignore_ascii_case(h))
     }
 
     /// 创建404响应
