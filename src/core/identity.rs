@@ -84,12 +84,13 @@ pub struct IdentityService {
 #[allow(dead_code)]
 impl IdentityService {
     /// 创建新的身份识别服务
-    pub fn new(session_ttl_hours: u64, request_ttl_minutes: u64) -> Self {
+    /// `session_ttl_secs` 和 `request_ttl_secs` 以秒为单位
+    pub fn new(session_ttl_secs: u64, request_ttl_secs: u64) -> Self {
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
             requests: Arc::new(RwLock::new(HashMap::new())),
-            session_ttl: Duration::from_secs(session_ttl_hours * 3600),
-            request_ttl: Duration::from_secs(request_ttl_minutes * 60),
+            session_ttl: Duration::from_secs(session_ttl_secs),
+            request_ttl: Duration::from_secs(request_ttl_secs),
         }
     }
 
@@ -297,7 +298,7 @@ impl IdentityService {
         let now = SystemTime::now();
 
         match now.duration_since(session.last_access) {
-            Ok(elapsed) => elapsed <= self.session_ttl,
+            Ok(elapsed) => elapsed < self.session_ttl,
             Err(_) => false,
         }
     }
@@ -322,7 +323,23 @@ impl IdentityService {
             .filter(|request| request.session_id == session_id)
             .cloned()
             .collect();
-        result.sort_by_key(|r| r.timestamp);
+        use std::cmp::Ordering;
+        use std::time::UNIX_EPOCH;
+
+        result.sort_by(|a, b| {
+            let at = a
+                .timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default();
+            let bt = b
+                .timestamp
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default();
+            match at.cmp(&bt) {
+                Ordering::Equal => a.request_id.cmp(&b.request_id),
+                other => other,
+            }
+        });
         result
     }
 
@@ -334,7 +351,7 @@ impl IdentityService {
         {
             let mut sessions = self.sessions.write().await;
             sessions.retain(|_, session| match now.duration_since(session.last_access) {
-                Ok(elapsed) => elapsed <= self.session_ttl,
+                Ok(elapsed) => elapsed < self.session_ttl,
                 Err(_) => false,
             });
         }
@@ -343,7 +360,7 @@ impl IdentityService {
         {
             let mut requests = self.requests.write().await;
             requests.retain(|_, request| match now.duration_since(request.timestamp) {
-                Ok(elapsed) => elapsed <= self.request_ttl,
+                Ok(elapsed) => elapsed < self.request_ttl,
                 Err(_) => false,
             });
         }

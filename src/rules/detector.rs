@@ -229,7 +229,12 @@ impl AttackDetector {
         // 低级别SQL注入检测 - 检测基本的SQL注入攻击
         self.sql_injection_regexes.push((
             DetectionLevel::Low,
-            REGEX_CACHE.get(r"(?i)'\s*or\s*'\d*'\s*=\s*'\d*'")?,
+            REGEX_CACHE.get(r#"(?i)'\s*or\s*'?\w+'?\s*=\s*'?\w+'?"#)?,
+        ));
+        // 检测不带引号的恒等式注入
+        self.sql_injection_regexes.push((
+            DetectionLevel::Low,
+            REGEX_CACHE.get(r"(?i)'?\s*or\s*1=1")?,
         ));
         self.sql_injection_regexes.push((
             DetectionLevel::Low,
@@ -239,7 +244,31 @@ impl AttackDetector {
         // 中级别SQL注入检测 - 检测更多的SQL注入攻击向量
         self.sql_injection_regexes.push((
             DetectionLevel::Medium,
-            REGEX_CACHE.get(r"(?i)\b(select|insert|update|delete|drop|alter|create)\b.*?\bfrom\b")?,
+            REGEX_CACHE.get(r"(?i)\bselect\b[\s\S]*?\bfrom\b")?,
+        ));
+        self.sql_injection_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\binsert\b[\s\S]*?\binto\b")?,
+        ));
+        self.sql_injection_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\bupdate\b[\s\S]*?\bset\b")?,
+        ));
+        self.sql_injection_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\bdelete\b[\s\S]*?\bfrom\b")?,
+        ));
+        self.sql_injection_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\bdrop\b[\s\S]*?\b(table|database)\b")?,
+        ));
+        self.sql_injection_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\balter\b[\s\S]*?\btable\b")?,
+        ));
+        self.sql_injection_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\bcreate\b[\s\S]*?\btable\b")?,
         ));
         self.sql_injection_regexes.push((
             DetectionLevel::Medium,
@@ -278,6 +307,11 @@ impl AttackDetector {
             DetectionLevel::Medium,
             REGEX_CACHE.get(r"(?i)\b(127\.0\.0\.1|localhost|0\.0\.0\.0|::1)(:[0-9]{1,5})?\b")?,
         ));
+        // 支持方括号包裹的IPv6本地主机格式
+        self.ssrf_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\[::1\](?::[0-9]{1,5})?")?,
+        ));
         self.ssrf_regexes.push((DetectionLevel::Medium, REGEX_CACHE.get(r"(?i)\b(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.[0-9]{1,3}\.[0-9]{1,3}(:[0-9]{1,5})?\b")?));
 
         // 高级别SSRF检测 - 检测SSRF绕过技术
@@ -308,6 +342,11 @@ impl AttackDetector {
             DetectionLevel::Medium,
             REGEX_CACHE.get(r"(?i)\$_(GET|POST|REQUEST|COOKIE|SERVER)\s*\[")?,
         ));
+        // 检测未使用数组访问的超级全局变量
+        self.webshell_regexes.push((
+            DetectionLevel::Medium,
+            REGEX_CACHE.get(r"(?i)\$_(GET|POST|REQUEST|COOKIE|SERVER)")?,
+        ));
         self.webshell_regexes.push((
             DetectionLevel::Medium,
             REGEX_CACHE.get(r"(?i)\b(base64_decode|str_rot13|gzinflate|gzuncompress)\s*\(")?,
@@ -316,11 +355,25 @@ impl AttackDetector {
         // 高级别WebShell检测 - 检测WebShell绕过技术
         self.webshell_regexes.push((
             DetectionLevel::High,
-            REGEX_CACHE.get(r"(?i)\b(preg_replace|create_function)\s*\(.*?/e")?,
+            REGEX_CACHE.get(r#"(?i)preg_replace\s*\([^)]*/e['"]"#)?,
+        ));
+        self.webshell_regexes.push((
+            DetectionLevel::High,
+            REGEX_CACHE.get(r"(?i)create_function\s*\(")?,
         ));
         self.webshell_regexes.push((
             DetectionLevel::High,
             REGEX_CACHE.get(r"(?i)\b(assert|call_user_func|call_user_func_array)\s*\(")?,
+        ));
+        // 变量函数调用检测
+        self.webshell_regexes.push((
+            DetectionLevel::High,
+            REGEX_CACHE.get(r#"(?i)\$\w+\s*=\s*['"][^'"]+['"]\s*\.\s*['"][^'"]+['"];\s*\$\w+\s*\("#)?,
+        ));
+        // 动态GLOBALS访问检测
+        self.webshell_regexes.push((
+            DetectionLevel::High,
+            REGEX_CACHE.get(r#"(?i)\$\{\s*"[A-Za-z]+"\s*\.\s*"[A-Za-z]+"\s*\}"#)?,
         ));
 
         Ok(())

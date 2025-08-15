@@ -92,7 +92,7 @@ impl CaptchaService {
 
         challenges.retain(
             |_, challenge| match now.duration_since(challenge.created_at) {
-                Ok(elapsed) => elapsed <= challenge.ttl,
+                Ok(elapsed) => elapsed < challenge.ttl,
                 Err(_) => false,
             },
         );
