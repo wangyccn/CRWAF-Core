@@ -200,8 +200,8 @@ mod captcha_expiry_tests {
         }
         assert_eq!(service.get_challenge_count().await, 4);
 
-        // 再等待2秒（第一批过期，第二批还有效）
-        sleep(Duration::from_secs(2)).await;
+        // 再等待1秒，确保第一批过期而第二批仍在有效期内
+        sleep(Duration::from_secs(1)).await;
 
         // 执行清理
         service.cleanup_expired().await.unwrap();

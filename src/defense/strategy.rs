@@ -187,6 +187,8 @@ impl DefenseStrategy {
                 ThreatLevel::High => ThreatLevel::Critical,
                 ThreatLevel::Critical => ThreatLevel::Critical,
             };
+        } else {
+            threat_levels.insert(identifier.to_string(), ThreatLevel::Medium);
         }
     }
 }

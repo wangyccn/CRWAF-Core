@@ -317,11 +317,13 @@ impl IdentityService {
     pub async fn get_session_requests(&self, session_id: &str) -> Vec<RequestInfo> {
         let requests = self.requests.read().await;
 
-        requests
+        let mut result: Vec<RequestInfo> = requests
             .values()
             .filter(|request| request.session_id == session_id)
             .cloned()
-            .collect()
+            .collect();
+        result.sort_by_key(|r| r.timestamp);
+        result
     }
 
     /// 清理过期的会话和请求

@@ -50,9 +50,13 @@ impl CaptchaGenerator {
     pub async fn verify_captcha(&self, captcha_id: &str, answer: &str) -> bool {
         let mut storage = self.captcha_storage.write().await;
 
-        if let Some(data) = storage.remove(captcha_id) {
+        if let Some(data) = storage.get(captcha_id).cloned() {
             // Case-insensitive comparison
-            data.answer.eq_ignore_ascii_case(answer)
+            let is_valid = data.answer.eq_ignore_ascii_case(answer);
+            if is_valid {
+                storage.remove(captcha_id);
+            }
+            is_valid
         } else {
             false
         }

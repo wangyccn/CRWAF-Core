@@ -590,7 +590,7 @@ mod expiry_and_cleanup_tests {
 
     #[tokio::test]
     async fn test_cleanup_expired_sessions() {
-        let service = IdentityService::new(0, 0); // 立即过期
+        let service = IdentityService::new(2, 2); // 2秒TTL
 
         // 创建多个会话
         for i in 0..3 {
@@ -656,7 +656,7 @@ mod expiry_and_cleanup_tests {
     #[tokio::test]
     async fn test_partial_cleanup() {
         // 使用较短的TTL以便测试及时过期
-        let service = IdentityService::new(0, 0); // 立即过期
+        let service = IdentityService::new(2, 2); // 2秒TTL
 
         // 创建第一批会话和请求
         for i in 0..2 {
@@ -711,8 +711,8 @@ mod expiry_and_cleanup_tests {
         assert_eq!(stats.total_sessions, 4);
         assert_eq!(stats.total_requests, 4);
 
-        // 等待第一批过期
-        sleep(Duration::from_secs(4)).await;
+        // 等待第一批过期，同时确保第二批仍在有效期内
+        sleep(Duration::from_millis(1500)).await;
 
         // 清理过期项
         service.cleanup_expired().await;
