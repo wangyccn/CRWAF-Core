@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安全验证 - 云锁WAF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        .info {
+            background: #f7f7f7;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .info-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #666;
+            min-width: 80px;
+            margin-right: 10px;
+        }
+        .progress-container {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 8px;
+            margin: 30px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            height: 100%;
+            width: 0%;
+            transition: width 5s linear;
+            box-shadow: 0 2px 5px rgba(102, 126, 234, 0.3);
+        }
+        .status {
+            color: #666;
+            font-size: 16px;
+            margin: 20px 0;
+        }
+        .computing {
+            display: none;
+            color: #667eea;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(102, 126, 234, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🛡️</div>
+        <h1>正在进行安全验证</h1>
+        <div class="info">
+            <div class="info-item">
+                <span class="info-label">您的IP:</span>
+                <span>{{IP}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">请求地址:</span>
+                <span>{{URL}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">访问时间:</span>
+                <span>{{TIME}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">目标站点:</span>
+                <span>{{HOST}}</span>
+            </div>
+        </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+        <div class="status" id="status">正在验证您的浏览器...</div>
+        <div class="computing" id="computing">
+            <span class="spinner"></span>
+            正在进行安全计算...
+        </div>
+        <div class="warning">
+            为了保护网站安全，我们需要验证您不是恶意机器人。验证将在几秒钟内自动完成，请稍候...
+        </div>
+    </div>
+    <script src="/waf/challenge.js"></script>
+    <script>
+        const challenge = {{CHALLENGE}};
+        window.addEventListener('load', function() {
+            startChallenge(challenge);
+        });
+    </script>
+</body>
+</html>
