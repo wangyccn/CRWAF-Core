@@ -54,7 +54,11 @@ impl RuleEngine {
         let rules: Vec<Rule> = serde_json::from_reader(reader)
             .context(format!("无法解析规则文件: {:?}", path.as_ref()))?;
 
-        info!("从 {:?} 加载了 {} 条规则", path.as_ref(), rules.len());
+        let count = rules.len();
+        info!("从 {:?} 加载了 {} 条规则", path.as_ref(), count);
+
+        // 提前为规则分配容量以减少重新分配
+        self.rules.reserve(count);
 
         // 编译规则
         for rule in rules {
@@ -94,6 +98,9 @@ impl RuleEngine {
                     // 否则加载目录下所有.json文件
                     parser.parse_all_rules()?
                 };
+
+                let count = rules.len();
+                self.rules.reserve(count);
 
                 // 编译规则
                 for rule in rules {
@@ -147,6 +154,9 @@ impl RuleEngine {
             path.as_ref(),
             rules.len()
         );
+
+        let count = rules.len();
+        self.rules.reserve(count);
 
         // 编译规则
         for mut rule in rules {
@@ -204,10 +214,10 @@ impl RuleEngine {
                     false
                 }
             }
-            RuleType::Exact => content == rule.rule.pattern,
-            RuleType::Contains => content.contains(&rule.rule.pattern),
-            RuleType::StartsWith => content.starts_with(&rule.rule.pattern),
-            RuleType::EndsWith => content.ends_with(&rule.rule.pattern),
+            RuleType::Exact => content == &*rule.rule.pattern,
+            RuleType::Contains => content.contains(&*rule.rule.pattern),
+            RuleType::StartsWith => content.starts_with(&*rule.rule.pattern),
+            RuleType::EndsWith => content.ends_with(&*rule.rule.pattern),
         }
     }
 

@@ -9,6 +9,8 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub grpc_port: Option<u16>,
+    /// worker thread count for the async runtime
+    pub worker_threads: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -72,6 +74,7 @@ impl Default for AppConfig {
                 host: "0.0.0.0".to_string(),
                 port: 8080,
                 grpc_port: Some(50051),
+                worker_threads: None,
             },
             cache: CacheConfig {
                 max_size: 10000,

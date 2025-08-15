@@ -655,7 +655,8 @@ mod expiry_and_cleanup_tests {
 
     #[tokio::test]
     async fn test_partial_cleanup() {
-        let service = IdentityService::new(1, 1); // 1小时TTL
+        // 使用较短的TTL以便测试及时过期
+        let service = IdentityService::new(0, 0); // 立即过期
 
         // 创建第一批会话和请求
         for i in 0..2 {

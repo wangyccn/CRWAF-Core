@@ -28,7 +28,7 @@ mod rule_model_tests {
             id: "test_rule_001".to_string(),
             name: "Test XSS Rule".to_string(),
             description: "Test rule for XSS detection".to_string(),
-            pattern: "<script.*?>.*?</script>".to_string(),
+            pattern: "<script.*?>.*?</script>".into(),
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -53,7 +53,7 @@ mod rule_model_tests {
             id: "ser_test_001".to_string(),
             name: "Serialization Test".to_string(),
             description: "Test rule serialization".to_string(),
-            pattern: "malicious".to_string(),
+            pattern: "malicious".into(),
             rule_type: RuleType::Contains,
             target: RuleTarget::Uri,
             action: RuleAction::Log,
@@ -157,7 +157,7 @@ mod rule_parser_tests {
             id: id.to_string(),
             name: format!("Test Rule {}", id),
             description: format!("Test rule with pattern: {}", pattern),
-            pattern: pattern.to_string(),
+            pattern: pattern.into(),
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -194,13 +194,13 @@ mod rule_parser_tests {
         assert_eq!(parsed_rules.len(), 3);
 
         assert_eq!(parsed_rules[0].id, "001");
-        assert_eq!(parsed_rules[0].pattern, "<script>");
+        assert_eq!(parsed_rules[0].pattern.as_ref(), "<script>");
 
         assert_eq!(parsed_rules[1].id, "002");
-        assert_eq!(parsed_rules[1].pattern, "SELECT.*FROM");
+        assert_eq!(parsed_rules[1].pattern.as_ref(), "SELECT.*FROM");
 
         assert_eq!(parsed_rules[2].id, "003");
-        assert_eq!(parsed_rules[2].pattern, "eval\\(");
+        assert_eq!(parsed_rules[2].pattern.as_ref(), "eval\\(");
     }
 
     #[test]
@@ -228,11 +228,11 @@ mod rule_parser_tests {
 
         // 验证XSS规则
         let xss_rule = all_rules.iter().find(|r| r.id == "xss_001").unwrap();
-        assert_eq!(xss_rule.pattern, "<script>");
+        assert_eq!(xss_rule.pattern.as_ref(), "<script>");
 
         // 验证SQL规则
         let sql_rule = all_rules.iter().find(|r| r.id == "sql_001").unwrap();
-        assert_eq!(sql_rule.pattern, "SELECT.*FROM");
+        assert_eq!(sql_rule.pattern.as_ref(), "SELECT.*FROM");
     }
 
     #[test]
@@ -337,7 +337,7 @@ mod rule_engine_tests {
                 id: "xss_001".to_string(),
                 name: "XSS Detection".to_string(),
                 description: "Detects XSS attempts".to_string(),
-                pattern: r"<script[^>]*>.*?</script>".to_string(),
+                pattern: r"<script[^>]*>.*?</script>".into(),
                 rule_type: RuleType::Regex,
                 target: RuleTarget::All,
                 action: RuleAction::Block,
@@ -350,7 +350,7 @@ mod rule_engine_tests {
                 id: "sql_001".to_string(),
                 name: "SQL Injection Detection".to_string(),
                 description: "Detects SQL injection attempts".to_string(),
-                pattern: r"(SELECT|INSERT|UPDATE|DELETE).*FROM".to_string(),
+                pattern: r"(SELECT|INSERT|UPDATE|DELETE).*FROM".into(),
                 rule_type: RuleType::Regex,
                 target: RuleTarget::Query,
                 action: RuleAction::Block,
@@ -363,7 +363,7 @@ mod rule_engine_tests {
                 id: "contains_001".to_string(),
                 name: "Contains Test".to_string(),
                 description: "Tests contains matching".to_string(),
-                pattern: "admin".to_string(),
+                pattern: "admin".into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::Uri,
                 action: RuleAction::Log,
@@ -432,7 +432,7 @@ mod rule_engine_tests {
             id: "regex_test".to_string(),
             name: "Regex Test".to_string(),
             description: "Test regex compilation".to_string(),
-            pattern: r"\d+".to_string(), // 简单的数字匹配
+            pattern: r"\d+".into(), // 简单的数字匹配
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -463,7 +463,7 @@ mod rule_engine_tests {
             id: "invalid_regex".to_string(),
             name: "Invalid Regex".to_string(),
             description: "Test invalid regex handling".to_string(),
-            pattern: r"[invalid regex(".to_string(), // 无效的正则表达式
+            pattern: r"[invalid regex(".into(), // 无效的正则表达式
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -519,7 +519,7 @@ mod rule_engine_tests {
             id: "disabled_test".to_string(),
             name: "Disabled Rule".to_string(),
             description: "This rule is disabled".to_string(),
-            pattern: "should_not_match".to_string(),
+            pattern: "should_not_match".into(),
             rule_type: RuleType::Contains,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -593,7 +593,7 @@ mod integration_tests {
                 id: "xss_script".to_string(),
                 name: "Script Tag XSS".to_string(),
                 description: "Detects script tag XSS".to_string(),
-                pattern: r"<script[^>]*>.*?</script>".to_string(),
+                pattern: r"<script[^>]*>.*?</script>".into(),
                 rule_type: RuleType::Regex,
                 target: RuleTarget::All,
                 action: RuleAction::Block,
@@ -606,7 +606,7 @@ mod integration_tests {
                 id: "xss_onerror".to_string(),
                 name: "OnError XSS".to_string(),
                 description: "Detects onerror XSS".to_string(),
-                pattern: "onerror=".to_string(),
+                pattern: "onerror=".into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::All,
                 action: RuleAction::Block,
@@ -622,7 +622,7 @@ mod integration_tests {
                 id: "sql_union".to_string(),
                 name: "SQL UNION Attack".to_string(),
                 description: "Detects SQL UNION attacks".to_string(),
-                pattern: r"UNION\s+SELECT".to_string(),
+                pattern: r"UNION\s+SELECT".into(),
                 rule_type: RuleType::Regex,
                 target: RuleTarget::Query,
                 action: RuleAction::Block,
@@ -635,7 +635,7 @@ mod integration_tests {
                 id: "sql_comment".to_string(),
                 name: "SQL Comment Attack".to_string(),
                 description: "Detects SQL comment attacks".to_string(),
-                pattern: "--".to_string(),
+                pattern: "--".into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::All,
                 action: RuleAction::Log,
@@ -718,7 +718,7 @@ mod integration_tests {
                 id: "high_priority".to_string(),
                 name: "High Priority Rule".to_string(),
                 description: "High priority test rule".to_string(),
-                pattern: "test".to_string(),
+                pattern: "test".into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::All,
                 action: RuleAction::Block,
@@ -731,7 +731,7 @@ mod integration_tests {
                 id: "medium_priority".to_string(),
                 name: "Medium Priority Rule".to_string(),
                 description: "Medium priority test rule".to_string(),
-                pattern: "test".to_string(),
+                pattern: "test".into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::All,
                 action: RuleAction::Log,
@@ -744,7 +744,7 @@ mod integration_tests {
                 id: "low_priority".to_string(),
                 name: "Low Priority Rule".to_string(),
                 description: "Low priority test rule".to_string(),
-                pattern: "test".to_string(),
+                pattern: "test".into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::All,
                 action: RuleAction::Log,
@@ -794,7 +794,7 @@ mod performance_tests {
                 id: format!("perf_rule_{:04}", i),
                 name: format!("Performance Rule {}", i),
                 description: format!("Performance test rule number {}", i),
-                pattern: format!("pattern_{}", i),
+                pattern: format!("pattern_{}", i).into(),
                 rule_type: RuleType::Contains,
                 target: RuleTarget::All,
                 action: RuleAction::Log,
@@ -841,7 +841,7 @@ mod performance_tests {
                 id: "complex_regex_1".to_string(),
                 name: "Complex Regex 1".to_string(),
                 description: "Complex regex for performance testing".to_string(),
-                pattern: r"(?i)(script|iframe|object|embed|form|input|select|textarea|button|link|meta|style).*?(on\w+\s*=|javascript:|data:|vbscript:)".to_string(),
+                pattern: r"(?i)(script|iframe|object|embed|form|input|select|textarea|button|link|meta|style).*?(on\w+\s*=|javascript:|data:|vbscript:)".into(),
                 rule_type: RuleType::Regex,
                 target: RuleTarget::All,
                 action: RuleAction::Block,
@@ -854,7 +854,7 @@ mod performance_tests {
                 id: "complex_regex_2".to_string(),
                 name: "Complex Regex 2".to_string(),
                 description: "Another complex regex for performance testing".to_string(),
-                pattern: r"(?i)(union\s+select|union\s+all\s+select|group\s+by|order\s+by|having|into\s+outfile|load_file|benchmark|sleep|waitfor|delay)".to_string(),
+                pattern: r"(?i)(union\s+select|union\s+all\s+select|group\s+by|order\s+by|having|into\s+outfile|load_file|benchmark|sleep|waitfor|delay)".into(),
                 rule_type: RuleType::Regex,
                 target: RuleTarget::All,
                 action: RuleAction::Block,
