@@ -373,7 +373,10 @@ mod click_shield_tests {
 
     #[test]
     fn test_click_shield_different_areas() {
-        let shield = ClickShield { click_areas: 5 };
+        let shield = ClickShield {
+            click_areas: 5,
+            template: "static/waf/click.html".to_string(),
+        };
         let html = shield.generate_response_page("test", create_request_info());
         let html_content = html.0;
 

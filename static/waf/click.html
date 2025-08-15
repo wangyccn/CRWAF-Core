@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点击验证 - 云锁WAF</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+        .click-area {
+            background: #f0f0f0;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 60px 20px;
+            margin: 30px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        .click-area:hover {
+            background: #e8e8e8;
+            border-color: #667eea;
+        }
+        .click-area.clicked {
+            background: #e8f5e9;
+            border-color: #4caf50;
+        }
+        .click-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .click-text {
+            font-size: 18px;
+            color: #666;
+        }
+        .counter {
+            font-size: 14px;
+            color: #999;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🛡️</div>
+        <h1>请完成点击验证</h1>
+        <div class="info">
+            <p>为了确认您是真实用户，请点击下方区域</p>
+        </div>
+        <div class="click-area" id="clickArea" onclick="handleClick()">
+            <div class="click-icon">👆</div>
+            <div class="click-text">点击此处验证</div>
+        </div>
+        <div class="counter" id="counter">
+            点击次数: <span id="clickCount">0</span> / {{REQUIRED_CLICKS}}
+        </div>
+        <input type="hidden" id="challengeId" value="{{CHALLENGE_ID}}" />
+    </div>
+    <script src="/waf/click-challenge.js"></script>
+</body>
+</html>
