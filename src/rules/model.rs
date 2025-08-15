@@ -117,7 +117,7 @@ pub struct Rule {
     /// 规则描述
     pub description: String,
     /// 匹配模式
-    pub pattern: String,
+    pub pattern: Box<str>,
     /// 规则类型
     pub rule_type: RuleType,
     /// 规则目标

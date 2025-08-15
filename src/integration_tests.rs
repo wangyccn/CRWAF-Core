@@ -29,6 +29,7 @@ fn create_test_config(temp_dir: &TempDir) -> AppConfig {
             host: "127.0.0.1".to_string(),
             port: 0, // 让系统自动分配端口
             grpc_port: None,
+            worker_threads: None,
         },
         cache: CacheConfig {
             max_size: 1000,
@@ -60,7 +61,7 @@ fn create_test_rules() -> Vec<Rule> {
             id: "xss_001".to_string(),
             name: "XSS Script Tag Detection".to_string(),
             description: "Detects basic XSS script tags".to_string(),
-            pattern: r"<script[^>]*>.*?</script>".to_string(),
+            pattern: r"<script[^>]*>.*?</script>".into(),
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -73,7 +74,7 @@ fn create_test_rules() -> Vec<Rule> {
             id: "sql_001".to_string(),
             name: "SQL Injection Detection".to_string(),
             description: "Detects basic SQL injection attempts".to_string(),
-            pattern: r"(?i)'.*or.*'.*=.*'".to_string(),
+            pattern: r"(?i)'.*or.*'.*=.*'".into(),
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
@@ -86,7 +87,7 @@ fn create_test_rules() -> Vec<Rule> {
             id: "admin_access".to_string(),
             name: "Admin Path Access".to_string(),
             description: "Detects access to admin paths".to_string(),
-            pattern: "/admin".to_string(),
+            pattern: "/admin".into(),
             rule_type: RuleType::Contains,
             target: RuleTarget::Uri,
             action: RuleAction::Log,
@@ -646,7 +647,7 @@ mod error_handling_integration_tests {
             id: "invalid_regex".to_string(),
             name: "Invalid Regex Rule".to_string(),
             description: "Rule with invalid regex pattern".to_string(),
-            pattern: "[invalid regex(".to_string(), // 无效的正则表达式
+            pattern: "[invalid regex(".into(), // 无效的正则表达式
             rule_type: RuleType::Regex,
             target: RuleTarget::All,
             action: RuleAction::Block,
