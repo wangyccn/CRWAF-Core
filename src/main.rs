@@ -11,49 +11,45 @@ mod defense;
 mod http;
 mod rules;
 
-/// 解析大小字符串（如 "10MB"、"1GB"）为字节数
+/// 解析大小字符串（如 "10MB"、"1GB"）为字节数，避免不必要的分配
 fn parse_size(size_str: &str) -> Option<u64> {
-    let size_str = size_str.trim().to_lowercase();
-
-    if size_str.ends_with("kb") {
-        let num = size_str.trim_end_matches("kb").parse::<u64>().ok()?;
-        Some(num * 1024)
-    } else if size_str.ends_with("mb") {
-        let num = size_str.trim_end_matches("mb").parse::<u64>().ok()?;
-        Some(num * 1024 * 1024)
-    } else if size_str.ends_with("gb") {
-        let num = size_str.trim_end_matches("gb").parse::<u64>().ok()?;
-        Some(num * 1024 * 1024 * 1024)
-    } else {
-        // 尝试直接解析为字节数
-        size_str.parse::<u64>().ok()
+    let s = size_str.trim();
+    let bytes = s.as_bytes();
+    let mut idx = 0;
+    while idx < bytes.len() && bytes[idx].is_ascii_digit() {
+        idx += 1;
+    }
+    let num = std::str::from_utf8(&bytes[..idx]).ok()?.parse::<u64>().ok()?;
+    let unit = &s[idx..];
+    match unit {
+        "" => Some(num),
+        "kb" | "KB" | "Kb" | "kB" => Some(num * 1024),
+        "mb" | "MB" | "Mb" | "mB" => Some(num * 1024 * 1024),
+        "gb" | "GB" | "Gb" | "gB" => Some(num * 1024 * 1024 * 1024),
+        _ => None,
     }
 }
 
-/// 解析时间字符串（如 "24h"、"7d"）为小时数
+/// 解析时间字符串（如 "24h"、"7d"）为小时数，避免字符串复制
 fn parse_time(time_str: &str) -> Option<u64> {
-    let time_str = time_str.trim().to_lowercase();
-
-    if time_str.ends_with("h") {
-        let num = time_str.trim_end_matches("h").parse::<u64>().ok()?;
-        Some(num)
-    } else if time_str.ends_with("d") {
-        let num = time_str.trim_end_matches("d").parse::<u64>().ok()?;
-        Some(num * 24) // 转换为小时
-    } else if time_str.ends_with("w") {
-        let num = time_str.trim_end_matches("w").parse::<u64>().ok()?;
-        Some(num * 24 * 7) // 转换为小时
-    } else {
-        // 尝试直接解析为小时数
-        time_str.parse::<u64>().ok()
+    let s = time_str.trim();
+    let bytes = s.as_bytes();
+    let mut idx = 0;
+    while idx < bytes.len() && bytes[idx].is_ascii_digit() {
+        idx += 1;
+    }
+    let num = std::str::from_utf8(&bytes[..idx]).ok()?.parse::<u64>().ok()?;
+    let unit = &s[idx..];
+    match unit {
+        "" => Some(num),
+        "h" | "H" => Some(num),
+        "d" | "D" => Some(num * 24),
+        "w" | "W" => Some(num * 24 * 7),
+        _ => None,
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // 加载配置
-    let config = core::config::load_config()?;
-    let config = Arc::new(config);
+async fn run(config: Arc<core::config::AppConfig>) -> Result<()> {
 
     // 初始化日志系统
     let log_level = match config.log.level.as_str() {
@@ -291,4 +287,22 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn main() -> Result<()> {
+    // 加载配置并构建自定义运行时以优化线程池配置
+    let config = core::config::load_config()?;
+    let threads = config
+        .server
+        .worker_threads
+        .unwrap_or_else(|| {
+            std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1)
+        });
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(threads)
+        .enable_all()
+        .build()?;
+    runtime.block_on(run(Arc::new(config)))
 }
