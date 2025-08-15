@@ -23,7 +23,7 @@ pub struct CacheItem<V: 'static> {
 #[derive(Serialize, Deserialize)]
 pub struct SerializableCacheItem<V> {
     pub value: V,
-    pub expires_at_secs: u64, // 从UNIX纪元开始的秒数
+    pub expires_at_millis: u128, // 从UNIX纪元开始的毫秒数
 }
 
 impl<V> SerializableCacheItem<V> {
@@ -41,15 +41,15 @@ impl<V> SerializableCacheItem<V> {
         // 计算过期时间点（UNIX时间戳）
         let expires_at = now.checked_add(expires_duration).unwrap_or(now);
 
-        // 转换为秒数
-        let expires_at_secs = expires_at
+        // 转换为毫秒数以保留子秒精度
+        let expires_at_millis = expires_at
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(io::Error::other)?
-            .as_secs();
+            .as_millis();
 
         Ok(Self {
             value: item.value.clone(),
-            expires_at_secs,
+            expires_at_millis,
         })
     }
 
@@ -60,7 +60,7 @@ impl<V> SerializableCacheItem<V> {
     {
         // 计算过期时间点（SystemTime）
         let expires_at_system = SystemTime::UNIX_EPOCH
-            .checked_add(Duration::from_secs(self.expires_at_secs))
+            .checked_add(Duration::from_millis(self.expires_at_millis as u64))
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "无效的过期时间"))?;
 
         // 如果已经过期，返回错误
@@ -503,7 +503,7 @@ where
         if let Some(max_items) = self.config.max_items {
             if cache_data.len() > max_items {
                 // 按过期时间排序，保留过期时间最晚的
-                cache_data.sort_by(|a, b| b.1.expires_at_secs.cmp(&a.1.expires_at_secs));
+                cache_data.sort_by(|a, b| b.1.expires_at_millis.cmp(&a.1.expires_at_millis));
                 cache_data.truncate(max_items);
             }
         }

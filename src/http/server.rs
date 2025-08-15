@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use axum::{
     body::Body,
-    extract::{ConnectInfo, Path, Request},
+    extract::{Path, Request},
     response::Response,
     routing::{get, post},
     serve, Router,
@@ -138,10 +138,7 @@ async fn captcha_gen_handler(Path(_challenge_id): Path<String>) -> Response<Body
         .unwrap()
 }
 
-async fn fallback_handler(
-    _connect_info: ConnectInfo<SocketAddr>,
-    _request: Request<Body>,
-) -> Response<Body> {
+async fn fallback_handler(_request: Request<Body>) -> Response<Body> {
     // 简单的404响应，暂时不调用WAF处理器
     Response::builder()
         .status(404)

@@ -536,10 +536,10 @@ mod serializable_cache_item_tests {
 
         let expired_serializable = SerializableCacheItem {
             value: "expired_value".to_string(),
-            expires_at_secs: expired_time
+            expires_at_millis: expired_time
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
-                .as_secs(),
+                .as_millis(),
         };
 
         // 尝试转换已过期的项应该失败
