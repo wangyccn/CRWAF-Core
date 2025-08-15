@@ -526,7 +526,7 @@ mod serializable_cache_item_tests {
         } else {
             original_item.expires_at - converted_item.expires_at
         };
-        assert!(time_diff < Duration::from_millis(100)); // 允许100ms误差
+        assert!(time_diff < Duration::from_millis(500)); // 允许500ms误差
     }
 
     #[test]

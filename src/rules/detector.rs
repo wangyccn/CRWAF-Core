@@ -229,7 +229,7 @@ impl AttackDetector {
         // 低级别SQL注入检测 - 检测基本的SQL注入攻击
         self.sql_injection_regexes.push((
             DetectionLevel::Low,
-            REGEX_CACHE.get(r"(?i)'\s*or\s*'\d*'\s*=\s*'\d*")?,
+            REGEX_CACHE.get(r"(?i)'\s*or\s*'\d*'\s*=\s*'\d*'")?,
         ));
         self.sql_injection_regexes.push((
             DetectionLevel::Low,
